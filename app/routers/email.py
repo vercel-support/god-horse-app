@@ -9,7 +9,7 @@ from ..utils.task import send_mail
 router = APIRouter()
 
 
-@router.post("/emails", status_code=HTTP_202_ACCEPTED)
+@router.post("/emails", status_code=HTTP_202_ACCEPTED, deprecated=True)
 async def send_email(message: EmailSchema, background_tasks: BackgroundTasks):
     background_tasks.add_task(send_mail, **message.dict(by_alias=True))
 
