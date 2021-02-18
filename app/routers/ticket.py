@@ -33,6 +33,9 @@ async def refresh_tickets(sheet_name):
         print(str(e))
         return {'status': f'Worksheet {sheet_name} not found'}
 
+@router.on_event('startup')
+async def on_startup() -> None:
+    await refresh_tickets('20210227')
 
 def config(app, settings):
     app.include_router(
