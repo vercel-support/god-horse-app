@@ -1,6 +1,11 @@
 from functools import lru_cache
-from typing import Dict
+from io import BytesIO
+from pathlib import Path
+from typing import Dict, List, Tuple, Union, BinaryIO
+from textwrap import wrap
+from PIL import Image, ImageFont, ImageDraw
 
+from fastapi.exception_handlers import HTTPException
 from pydrive.auth import GoogleAuth, ServiceAccountCredentials
 from pydrive.drive import GoogleDrive
 
@@ -44,3 +49,40 @@ def get_file(_id: str, decoding=False):
     if decoding:
         return file.content.getvalue().decode('utf-8')
     return file.content.getvalue()
+
+
+def image_merge_text(
+        image: BytesIO,
+        text: str,
+        font: str = 'SFNSMono.ttf',
+        font_size: int = 150,
+        color: Union[Tuple, List] = (0, 0, 0)) -> BytesIO:
+    img = Image.open(image).convert('RGBA')
+    img_editable = ImageDraw.Draw(img)
+    font = ImageFont.truetype('app/fonts/'+font, font_size)
+    for mid_x, mid_y, words in middle_pos(img, text, font):
+        img_editable.text((mid_x, mid_y), words, color, font=font)
+    bytes_io = BytesIO()
+    img.save(bytes_io, format='png')
+
+    return BytesIO(bytes_io.getvalue())
+
+
+def middle_pos(img: Image, text: str, font: ImageFont):
+    text_w, word_h = font.getsize(text)
+    n_words = len(text)
+    word_w = text_w // n_words
+    img_w, img_h = img.size
+
+    n_lines = 1 + text_w//(img_w-2*word_w)
+    lines = wrap(text, n_words//n_lines)
+    _, word_h = font.getsize(text)
+
+    y = (img_h - word_h*(n_lines))//2
+    for line in lines:
+        text_w, text_h = font.getsize(line)
+        if y >= img_h - text_h:
+            raise HTTPException(
+                status_code=404, detail='font size is too large to text')
+        yield (img_w-text_w)//2, y, line
+        y += text_h
