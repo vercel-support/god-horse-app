@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     SENTRY_DSN: SecretStr = None
     API_KEY: SecretStr = "god-horse"
     DEFAULT_EMAIL_ADDRESS: EmailStr = "whighwall@email.com"
-    SENDGRID_API_KEY: SecretStr = "get_your_api_key_from_sendgrid_dashboard"
+    SENDGRID_API_KEY: SecretStr = "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"
     BROKER_URL: str = "amqp://rabbitmq:rabbitmq@localhost"
     BROKER_POOL_LIMIT: Optional[int] = 1
     TEMPLATES_FOLDER: str = "templates"
