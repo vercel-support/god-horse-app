@@ -1,7 +1,7 @@
 from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
-from typing import Dict, List, Tuple, Union, BinaryIO
+from typing import Dict, List, Tuple, Union
 from textwrap import wrap
 from PIL import Image, ImageFont, ImageDraw
 
@@ -54,14 +54,18 @@ def get_file(_id: str, decoding=False):
 def image_merge_text(
         image: BytesIO,
         text: str,
+        xy: Union[Tuple, List] = None,
         font: str = 'SFNSMono.ttf',
         font_size: int = 150,
         color: Union[Tuple, List] = (0, 0, 0)) -> BytesIO:
     img = Image.open(image).convert('RGBA')
     img_editable = ImageDraw.Draw(img)
     font = ImageFont.truetype('app/fonts/'+font, font_size)
-    for mid_x, mid_y, words in middle_pos(img, text, font):
-        img_editable.text((mid_x, mid_y), words, color, font=font)
+    if xy:
+        img_editable.text(xy, text, color, font=font)
+    else:
+        for mid_x, mid_y, words in middle_pos(img, text, font):
+            img_editable.text((mid_x, mid_y), words, color, font=font)
     bytes_io = BytesIO()
     img.save(bytes_io, format='png')
 

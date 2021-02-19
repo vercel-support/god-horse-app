@@ -29,7 +29,7 @@ async def image_endpoint(dir_name: str, img_name: str, background_tasks: Backgro
 @router.on_event('startup')
 async def on_startup() -> None:
     global img_dirs
-    update_img_dirs('20210227')
+    img_dirs = update_img_dirs(img_dirs)
 
 
 def config(app, settings):

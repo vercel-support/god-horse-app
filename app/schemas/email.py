@@ -1,5 +1,7 @@
+from typing import Optional
 from enum import Enum
 from pydantic import BaseModel, EmailStr, Field
+from sendgrid.helpers.mail import file_name
 
 
 class ContentType(str, Enum):
@@ -8,11 +10,16 @@ class ContentType(str, Enum):
 
 
 class BaseEmailSchema(BaseModel):
-    to_email: EmailStr = Field(alias="to")
-    from_email: EmailStr = Field(default=None, alias="from")
+    to_email: EmailStr
+    from_email: EmailStr
 
 
 class EmailSchema(BaseEmailSchema):
     subject: str = Field(max_length=78)
-    content: str
-    content_type: ContentType = ContentType.TEXT_HTML
+    html_contemt: Optional[str]
+    plain_text_content: Optional[str]
+
+
+class EmailAttachFileSchema(EmailSchema):
+    file_type: Optional[str]
+    file_name: Optional[str]

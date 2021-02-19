@@ -1,41 +1,51 @@
 from typing import Optional
+from fastapi.routing import get_request_handler
 from pydantic import EmailStr
 from fastapi import APIRouter, Depends, BackgroundTasks
 
-from ..utils.ticket import update_sheet, get_tickets
+from ..utils.ticket import update_sheet, get_tickets, generate_finish_cert
 from ..utils.security import api_key_checker
 
 
 router = APIRouter()
 tickets = dict()
+user_email_dict = dict()
 
 
 @router.get('/get_ticket')
-async def get_ticket(sheet_name: str, email: EmailStr, background_tasks: BackgroundTasks, name: Optional[str] = None):
-    global tickets
+async def get_ticket(sheet_name: str, email: EmailStr, background_tasks: BackgroundTasks, name: str):
+    global tickets, user_email_dict
+    if email in user_email_dict:
+        return {'number': -1, 'words': f'This user ({email}) has already got ticket!!'}
     if sheet_name not in tickets:
-        return {'number': -1, 'words': f'{sheet_name} not in tickets'}
+        return {'number': -1, 'words': f'{sheet_name} not in tickets!!'}
     if not tickets.get(sheet_name):
         return {'number': -1, 'words': f'{sheet_name} is empty!!'}
     number, words, *_ = tickets[sheet_name].pop()
+    user_email_dict[email] = (number, name)
     background_tasks.add_task(update_sheet, sheet_name, ind=int(
-        number)+1, values=[name, email])
+        number)+1, values=[name, email, words])
+    background_tasks.add_task(
+        generate_finish_cert, dir_name=sheet_name, name=name, number=number, words=words)
     return {'number': number, 'words': words}
 
 
 @router.get('/refresh_tickets')
 async def refresh_tickets(sheet_name):
-    global tickets
+    global tickets, user_email_dict
     try:
         tickets = get_tickets(tickets, sheet_name)
+        user_email_dict = dict()
         return {'status': f'refresh {sheet_name}'}
     except Exception as e:
         print(str(e))
         return {'status': f'Worksheet {sheet_name} not found'}
 
-@router.on_event('startup')
-async def on_startup() -> None:
-    await refresh_tickets('20210227')
+
+# @router.on_event('startup')
+# async def on_startup() -> None:
+#     await refresh_tickets('20210227')
+
 
 def config(app, settings):
     app.include_router(
