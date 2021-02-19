@@ -11,6 +11,7 @@ pytest = "*"
 email-validator = "*"
 pydrive = "*"
 pillow = "*"
+sendgrid = "*"
 
 [dev-packages]
 
