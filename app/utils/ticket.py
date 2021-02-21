@@ -40,7 +40,7 @@ def get_tickets(sheet_name: str, tickets: Dict = None, shuffled=True):
 
 async def generate_finish_cert(dir_name: str, name: str, number: str, words: str):
     img = BytesIO(
-        open(f'{settings.APP_DIR}/files/{dir_name}/template.png', 'rb').read())
+        open(settings.IMG_DIR.joinpath(f'{dir_name}/template.png').absolute(), 'rb').read())
     img = image_merge_text(image=img, text=words)
     img = image_merge_text(image=img, xy=(50, 50), text=name)
     with open(f'app/files/{dir_name}/{number}.png', 'wb') as f:
