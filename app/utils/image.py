@@ -1,5 +1,5 @@
 from functools import lru_cache
-from io import BytesIO
+from io import BytesIO, StringIO
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
 from textwrap import wrap
@@ -33,12 +33,24 @@ def get_dir_list(q_id='1TFlN9CB18Xv4g29swpjvhGKkBWAxFig6', dir_only=False):
     return {file['title']: file['id'] for file in file_list}
 
 
-def update_img_dirs(img_dirs: Dict):
+def update_drive_img_dirs(img_dirs: Dict):
+    if img_dirs == None:
+        img_dir = dict()
     _img_dirs = get_dir_list(dir_only=True)
     for title, _id in _img_dirs.items():
         if title not in img_dirs and '.' not in title:
             img_dirs[title] = {'id': _id,
                                'files': get_dir_list(q_id=_id)}
+    return img_dirs
+
+
+def update_local_img_dirs(img_dirs: Dict = None):
+    if img_dirs == None:
+        img_dirs = dict()
+    for p in settings.IMG_DIR.iterdir():
+        if p.is_dir():
+            img_dirs.update(
+                {p.name: [f.name for f in p.iterdir() if f.name.endswith('.png') or f.name.endswith('.jpg')]})
     return img_dirs
 
 
@@ -90,3 +102,14 @@ def middle_pos(img: Image, text: str, font: ImageFont):
                 status_code=404, detail='font size is too large to text')
         yield (img_w-text_w)//2, y, line
         y += text_h
+
+
+def save_file(file: Union[BytesIO, StringIO], file_name: str):
+    if isinstance(file, BytesIO):
+        w_format = 'wb'
+    elif isinstance(file, StringIO):
+        w_format = 'w'
+    else:
+        raise 'The file format not BytesIO or StringIO!!'
+    with open(file_name, w_format) as f:
+        f.write(file.getvalue())
