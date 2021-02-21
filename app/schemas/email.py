@@ -16,7 +16,7 @@ class BaseEmailSchema(BaseModel):
 
 class EmailSchema(BaseEmailSchema):
     subject: str = Field(max_length=78)
-    html_contemt: Optional[str]
+    html_content: Optional[str]
     plain_text_content: Optional[str]
 
 
