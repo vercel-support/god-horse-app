@@ -19,7 +19,7 @@ local_img_dirs = dict()
 @router.get("/img/{dir_name}/{img_name}")
 async def image_endpoint(dir_name: str, img_name: str, background_tasks: BackgroundTasks, text: Optional[str] = None):
     global drive_img_dirs, local_img_dirs
-    img_list = drive_img_dirs.get(dir_name).get('files')
+    img_list = drive_img_dirs.get(dir_name, {}).get('files')
     local_file_path = settings.IMG_DIR.joinpath(
         dir_name + "/" + img_name).absolute()
     if local_img_dirs.get(dir_name) and img_name in local_img_dirs[dir_name]:
@@ -43,11 +43,11 @@ async def image_endpoint(dir_name: str, img_name: str, background_tasks: Backgro
     return StreamingResponse(img, media_type="image/png")
 
 
-@router.on_event('startup')
-async def on_startup() -> None:
-    global drive_img_dirs, local_img_dirs
-    drive_img_dirs = update_drive_img_dirs(drive_img_dirs)
-    local_img_dirs = update_local_img_dirs(local_img_dirs)
+# @router.on_event('startup')
+# async def on_startup() -> None:
+#     global drive_img_dirs, local_img_dirs
+#     drive_img_dirs = update_drive_img_dirs(drive_img_dirs)
+#     local_img_dirs = update_local_img_dirs(local_img_dirs)
 
 
 def config(app, settings):
