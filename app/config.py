@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     SERVICE_ACCOUNT_CRED_PATH = APP_DIR.joinpath(
         '../.config/god-horse-352a0c8228c0.json').absolute()
     APP_NAME: str = 'God Hourse API'
+    FROM_EMAIL: str = 'whighwall@gmail.com'
     SHEET_FILE_NAME: str = '神駒團箴言集'
     ENV: Environment = Environment.DEVELOPMENT
     SENTRY_DSN: SecretStr = None
