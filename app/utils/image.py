@@ -39,7 +39,7 @@ def update_drive_img_dirs(img_dirs: Dict):
     _img_dirs = get_dir_list(dir_only=True)
     for title, _id in _img_dirs.items():
         if title not in img_dirs and '.' not in title:
-            settings.IMG_DIR.joinpath(title).mkdir(exist_ok=True)
+            settings.IMG_DIR.joinpath(title).mkdir(parents=True, exist_ok=True)
             img_dirs[title] = {'id': _id,
                                'files': get_dir_list(q_id=_id)}
     return img_dirs
