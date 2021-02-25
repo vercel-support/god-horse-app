@@ -1,6 +1,6 @@
 from functools import lru_cache
 from typing import BinaryIO, Union, Dict
-import pathlib
+from pathlib import Path
 import base64
 import logging
 from fastapi.logger import logger
@@ -54,14 +54,12 @@ def generate_email(
         html_content=html_content,
         plain_text_content=plain_text_content,
     )
-    if file_name:
-        file = pathlib.Path(file_name)
-        if file.exists():
-            data = open(file_name, 'rb').read()
-            message.attachment = generate_attachFile(
-                data, file_name, file_type)
-        else:
-            logger.warning(f'{file_name} does not exist!!')
+    if file_name.exists():
+        data = open(file_name, 'rb').read()
+        message.attachment = generate_attachFile(
+            data, file_name.name, file_type)
+    else:
+        logger.warning(f'{file_name} does not exist!!')
     return message
 
 
