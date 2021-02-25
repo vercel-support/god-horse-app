@@ -1,12 +1,12 @@
 import logging
 from typing import Optional
 from pydantic import EmailStr
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, exceptions
 from fastapi.logger import logger
 
 from .image import local_img_dirs, drive_img_dirs
 from ..utils.ticket import update_sheet, get_tickets, generate_finish_cert, clear_sheet
-from ..utils.image import get_img
+from ..utils.image import get_img, update_local_img_dirs, update_drive_img_dirs
 from ..utils.security import api_key_checker
 
 logger.setLevel(logging.DEBUG)
@@ -38,12 +38,16 @@ async def get_ticket(sheet_name: str, email: EmailStr, background_tasks: Backgro
 
 @router.get('/refresh_tickets')
 async def refresh_tickets(sheet_name, background_tasks: BackgroundTasks = None):
-    global tickets, user_email_dict
+    global tickets, user_email_dict, local_img_dirs, drive_img_dirs
     try:
         tickets.update(get_tickets(sheet_name=sheet_name))
         await clear_sheet(sheet_name)
-        get_img(sheet_name, 'template.png', background_tasks,
-                local_img_dirs, drive_img_dirs)
+        try:
+            get_img(sheet_name, 'template.png', background_tasks,
+                    local_img_dirs, drive_img_dirs)
+        except:
+            background_tasks.add_task(update_local_img_dirs, local_img_dirs)
+            background_tasks.add_task(update_drive_img_dirs, drive_img_dirs)
         user_email_dict = dict()
 
         return {'status': f'refresh {sheet_name}'}
