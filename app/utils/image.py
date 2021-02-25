@@ -38,24 +38,24 @@ def get_dir_list(q_id='1TFlN9CB18Xv4g29swpjvhGKkBWAxFig6', dir_only=False):
 
 def update_drive_img_dirs(img_dirs: Dict):
     if img_dirs == None:
-        img_dirs = dict()
+        raise Exception(f'img_dirs can not be None!!')
     _img_dirs = get_dir_list(dir_only=True)
     for title, _id in _img_dirs.items():
         if title not in img_dirs and '.' not in title:
             settings.IMG_DIR.joinpath(title).mkdir(parents=True, exist_ok=True)
             img_dirs[title] = {'id': _id,
                                'files': get_dir_list(q_id=_id)}
-    return img_dirs
+    # return img_dirs
 
 
 def update_local_img_dirs(img_dirs: Dict = None):
     if img_dirs == None:
-        img_dirs = dict()
+        raise Exception(f'img_dirs can not be None!!')
     for p in settings.IMG_DIR.iterdir():
         if p.is_dir():
             img_dirs.update(
                 {p.name: [f.name for f in p.iterdir() if f.name.endswith('.png')]})
-    return img_dirs
+    # return img_dirs
 
 
 def get_img(dir_name: str, img_name: str, background_tasks: BackgroundTasks, local_img_dirs, drive_img_dirs) -> BytesIO:
