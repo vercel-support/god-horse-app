@@ -1,12 +1,14 @@
 from io import BytesIO
 import logging
-from typing import Optional
-from fastapi import APIRouter, BackgroundTasks, Depends
+import shutil
+from typing import Optional, List
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Body
 from fastapi.logger import logger
 from starlette.responses import StreamingResponse
 
-from ..utils.image import update_drive_img_dirs, update_local_img_dirs, get_file, image_merge_text, save_file
+from ..utils.image import update_drive_img_dirs, update_local_img_dirs, get_file, image_merge_text, read_img, save_img, get_img
 # from ..utils.security import api_key_checker
+from ..schemas.image import MergeText
 from ..config import get_settings
 
 router = APIRouter()
@@ -15,32 +17,54 @@ settings = get_settings()
 drive_img_dirs = dict()
 local_img_dirs = dict()
 
+cert_example = [{
+    'text': '掙扎得勝獎',
+    'font': 'ヒラギノ角ゴシック W4.ttc',
+    'position': (300, 400),
+    'color': (250, 220, 150),
+    'size': 250},
+    {
+    'text': 'HIGHWALL',
+    'font': 'NewYork.ttf',
+    'color': (0, 0, 0),
+    'position': (1300, 850),
+    'size': 80},
+    {
+    'text': '配合急速變化的時代來提升層次就是順理，是理所當然的理致。\n在現在此時、這轉換期的時機，透過造就自己來提升層次、重生和變化的人，才能完全地承擔往後的歷史。\n因此，藉由將自己造就完美來更加提升層次、重生、變化吧！',
+    'font': 'ヒラギノ角ゴシック W4.ttc',
+    'box': (960, 1090, 2290, 1550),
+    'draw_box': True,
+    'color': (120, 100, 255),
+    'size': 40}
+]
 
-@router.get("/img/{dir_name}/{img_name}")
-async def image_endpoint(dir_name: str, img_name: str, background_tasks: BackgroundTasks, text: Optional[str] = None):
-    global drive_img_dirs, local_img_dirs
-    img_list = drive_img_dirs.get(dir_name, {}).get('files')
-    local_file_path = settings.IMG_DIR.joinpath(
-        dir_name + "/" + img_name).absolute()
-    if local_img_dirs.get(dir_name) and img_name in local_img_dirs[dir_name]:
-        logger.info('read local file')
-        with open(local_file_path, 'rb') as f:
-            img = BytesIO(f.read())
-    elif dir_name not in drive_img_dirs:
-        background_tasks.add_task(update_drive_img_dirs, drive_img_dirs)
-        background_tasks.add_task(update_local_img_dirs, local_img_dirs)
-        return {'status': f'{dir_name} not in "{settings.SHEET_FILE_NAME}"'}
-    elif img_name not in img_list:
-        background_tasks.add_task(update_drive_img_dirs, drive_img_dirs)
-        background_tasks.add_task(update_local_img_dirs, local_img_dirs)
-        return {'status': f'{img_name} not in {dir_name}'}
-    else:
-        img = BytesIO(get_file(img_list[img_name]))
-        background_tasks.add_task(save_file, img, local_file_path)
-        background_tasks.add_task(update_local_img_dirs, local_img_dirs)
-    if text:
-        img = image_merge_text(image=img, text=text)
+
+@router.post("/img/{dir_name}/{img_name}")
+async def image_endpoint(dir_name: str, img_name: str, background_tasks: BackgroundTasks = None, merge_text_list: Optional[List[MergeText]] = Body(None, example=cert_example)):
+    global local_img_dirs, drive_img_dirs
+    try:
+        img = get_img(dir_name, img_name, background_tasks,
+                      local_img_dirs, drive_img_dirs)
+    except Exception as e:
+        raise HTTPException(
+            status_code=404, detail=str(e))
+    finally:
+        if background_tasks:
+            background_tasks.add_task(update_local_img_dirs, local_img_dirs)
+
+    if merge_text_list:
+        for merge_text in merge_text_list:
+            img = image_merge_text(
+                image=img, **merge_text.dict())
     return StreamingResponse(img, media_type="image/png")
+
+
+@router.get('/clear_img_dir')
+async def clear_img_dri(dir_name: str):
+    global local_img_dirs
+    local_img_dirs = dict()
+    shutil.rmtree(settings.IMG_DIR.joinpath(dir_name).absolute())
+    return {'info': f'remove the directory ({dir_name})'}
 
 
 @router.on_event('startup')
