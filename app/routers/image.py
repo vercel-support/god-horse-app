@@ -51,6 +51,7 @@ async def image_endpoint(dir_name: str, img_name: str, background_tasks: Backgro
     finally:
         if background_tasks:
             background_tasks.add_task(update_local_img_dirs, local_img_dirs)
+            background_tasks.add_task(update_drive_img_dirs, drive_img_dirs)
 
     if merge_text_list:
         for merge_text in merge_text_list:
@@ -63,7 +64,10 @@ async def image_endpoint(dir_name: str, img_name: str, background_tasks: Backgro
 async def clear_img_dri(dir_name: str):
     global local_img_dirs
     local_img_dirs = dict()
-    shutil.rmtree(settings.IMG_DIR.joinpath(dir_name).absolute())
+    # shutil.rmtree(settings.IMG_DIR.joinpath(dir_name).absolute())
+    [file.unlink() for file in settings.IMG_DIR.joinpath(
+        dir_name).iterdir() if not file.name.startswith('template')]
+
     return {'info': f'remove the directory ({dir_name})'}
 
 
