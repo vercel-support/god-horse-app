@@ -1,10 +1,12 @@
 import logging
 from typing import Optional
 from pydantic import EmailStr
-from fastapi import APIRouter, Depends, BackgroundTasks
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from fastapi.logger import logger
 
+from .image import local_img_dirs, drive_img_dirs
 from ..utils.ticket import update_sheet, get_tickets, generate_finish_cert, clear_sheet
+from ..utils.image import get_img
 from ..utils.security import api_key_checker
 
 logger.setLevel(logging.DEBUG)
@@ -17,33 +19,38 @@ user_email_dict = dict()
 async def get_ticket(sheet_name: str, email: EmailStr, background_tasks: BackgroundTasks, name: str):
     global tickets, user_email_dict
     if email in user_email_dict:
-        number, words = user_email_dict[email]
-        return {'number': number, 'words': words}
+        number, title, words = user_email_dict[email]
+        return {'words': words}
     if sheet_name not in tickets:
-        return {'number': -1, 'words': f'{sheet_name} not in tickets!!'}
+        raise HTTPException(
+            status_code=404, detail=f'{sheet_name} not in tickets!!')
     if not tickets.get(sheet_name):
-        return {'number': -1, 'words': f'{sheet_name} is empty!!'}
-    number, words, *_ = tickets[sheet_name].pop()
-    user_email_dict[email] = (number, words)
-    background_tasks.add_task(update_sheet, sheet_name, ind=int(
-        number)+1, values=[name, email, '0'])
+        raise HTTPException(
+            status_code=404, detail=f'{sheet_name} is empty!!')
+    number, title, words, *_ = tickets[sheet_name].pop()
+    user_email_dict[email] = (number, title, words)
+    background_tasks.add_task(update_sheet, sheet_name,
+                              ind=number, values=[name, email, '0'])
     background_tasks.add_task(
-        generate_finish_cert, dir_name=sheet_name, name=name, number=number, words=words)
-    return {'number': number, 'words': words}
+        generate_finish_cert, dir_name=sheet_name, name=name, title=title, words=words)
+    return {'words': words}
 
 
 @router.get('/refresh_tickets')
-async def refresh_tickets(sheet_name):
+async def refresh_tickets(sheet_name, background_tasks: BackgroundTasks = None):
     global tickets, user_email_dict
     try:
-        tickets = get_tickets(sheet_name=sheet_name, tickets=tickets)
+        tickets.update(get_tickets(sheet_name=sheet_name))
         await clear_sheet(sheet_name)
+        get_img(sheet_name, 'template.png', background_tasks,
+                local_img_dirs, drive_img_dirs)
         user_email_dict = dict()
 
         return {'status': f'refresh {sheet_name}'}
     except Exception as e:
         logger.warning(f'Error: {str(e)}')
-        return {'status': f'Worksheet {sheet_name} not found'}
+        raise HTTPException(
+            status_code=404, detail=f'Worksheet {sheet_name} not found')
 
 
 # @router.on_event('startup')
