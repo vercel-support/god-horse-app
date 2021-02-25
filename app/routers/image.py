@@ -65,17 +65,19 @@ async def clear_img_dri(dir_name: str):
     global local_img_dirs
     local_img_dirs = dict()
     # shutil.rmtree(settings.IMG_DIR.joinpath(dir_name).absolute())
+    if not settings.IMG_DIR.exists():
+        return {'info': f'the directory ({dir_name}) does not exist!'}
     [file.unlink() for file in settings.IMG_DIR.joinpath(
         dir_name).iterdir() if not file.name.startswith('template')]
 
-    return {'info': f'remove the directory ({dir_name})'}
+    return {'info': f'remove the images in directory ({dir_name})'}
 
 
 @router.on_event('startup')
 async def on_startup() -> None:
     global drive_img_dirs, local_img_dirs
-    drive_img_dirs = update_drive_img_dirs(drive_img_dirs)
-    local_img_dirs = update_local_img_dirs(local_img_dirs)
+    update_drive_img_dirs(drive_img_dirs)
+    update_local_img_dirs(local_img_dirs)
 
 
 def config(app, settings):
