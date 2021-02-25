@@ -130,3 +130,7 @@ dmypy.json
 
 # vs setting
 settings.json
+
+# image
+*.png
+*.jpg
