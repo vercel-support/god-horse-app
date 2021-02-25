@@ -48,9 +48,8 @@ async def refresh_tickets(sheet_name, background_tasks: BackgroundTasks = None):
 
         return {'status': f'refresh {sheet_name}'}
     except Exception as e:
-        logger.warning(f'Error: {str(e)}')
         raise HTTPException(
-            status_code=404, detail=f'Worksheet {sheet_name} not found')
+            status_code=404, detail=f'Error: {str(e)}')
 
 
 # @router.on_event('startup')
