@@ -36,21 +36,12 @@ def get_dir_list(q_id='1TFlN9CB18Xv4g29swpjvhGKkBWAxFig6', dir_only=False):
     return {file['title']: file['id'] for file in file_list}
 
 
-def update_drive_img_dirs(img_dirs: Dict):
-    if img_dirs == None:
-        raise Exception(f'img_dirs can not be None!!')
-    _img_dirs = get_dir_list(dir_only=True)
-    for title, _id in _img_dirs.items():
-        if title not in img_dirs and '.' not in title:
-            settings.IMG_DIR.joinpath(title).mkdir(parents=True, exist_ok=True)
-            img_dirs[title] = {'id': _id,
-                               'files': get_dir_list(q_id=_id)}
-    # return img_dirs
-
-
 def update_local_img_dirs(img_dirs: Dict = None):
     if img_dirs == None:
         raise Exception(f'img_dirs can not be None!!')
+    if not settings.IMG_DIR.exists():
+        settings.IMG_DIR.mkdir(parents=True, exist_ok=True)
+        return
     for p in settings.IMG_DIR.iterdir():
         if p.is_dir():
             img_dirs.update(
@@ -58,19 +49,30 @@ def update_local_img_dirs(img_dirs: Dict = None):
     # return img_dirs
 
 
+def update_drive_img_dirs(img_dirs: Dict):
+    if img_dirs == None:
+        raise Exception(f'img_dirs can not be None!!')
+    _img_dirs = get_dir_list(dir_only=True)
+    for title, _id in _img_dirs.items():
+        if title not in img_dirs and '.' not in title:
+            img_dirs[title] = {'id': _id,
+                               'files': get_dir_list(q_id=_id)}
+    # return img_dirs
+
+
 def get_img(dir_name: str, img_name: str, background_tasks: BackgroundTasks, local_img_dirs, drive_img_dirs) -> BytesIO:
-    img_list = drive_img_dirs.get(dir_name, {}).get('files')
-    local_file_path = settings.IMG_DIR.joinpath(
-        dir_name + "/" + img_name)
+    local_file_path = settings.IMG_DIR.joinpath(dir_name + "/" + img_name)
+    # get img from local
     if local_img_dirs.get(dir_name) and img_name in local_img_dirs[dir_name]:
         logger.info('read local file')
         img = read_img(local_file_path)
-    elif dir_name not in drive_img_dirs:
+    elif not drive_img_dirs.get(dir_name):
         raise Exception(f'{dir_name} not in "{settings.SHEET_FILE_NAME}"')
-    elif img_name not in img_list:
+    elif not drive_img_dirs.get(dir_name).get('files').get(img_name):
         raise Exception(f'{img_name} not in {dir_name}')
     else:
-        img = BytesIO(get_file(img_list[img_name]))
+        img_id = drive_img_dirs.get(dir_name).get('files').get(img_name)
+        img = BytesIO(get_file(img_id))
         settings.IMG_DIR.joinpath(dir_name).mkdir(
             parents=True, exist_ok=True)
         if background_tasks:

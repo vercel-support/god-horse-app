@@ -14,8 +14,8 @@ from ..config import get_settings
 router = APIRouter()
 logger.setLevel(logging.DEBUG)
 settings = get_settings()
-drive_img_dirs = dict()
 local_img_dirs = dict()
+drive_img_dirs = dict()
 
 cert_example = [{
     'text': '掙扎得勝獎',
@@ -73,11 +73,11 @@ async def clear_img_dri(dir_name: str):
     return {'info': f'remove the images in directory ({dir_name})'}
 
 
-@router.on_event('startup')
-async def on_startup() -> None:
-    global drive_img_dirs, local_img_dirs
-    update_drive_img_dirs(drive_img_dirs)
-    update_local_img_dirs(local_img_dirs)
+# @router.on_event('startup')
+# async def on_startup() -> None:
+#     global local_img_dirs, drive_img_dirs
+#     update_local_img_dirs(local_img_dirs)
+#     update_drive_img_dirs(drive_img_dirs)
 
 
 def config(app, settings):
