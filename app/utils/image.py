@@ -60,7 +60,7 @@ def update_drive_img_dirs(img_dirs: Dict):
     # return img_dirs
 
 
-def get_img(dir_name: str, img_name: str, background_tasks: BackgroundTasks, local_img_dirs, drive_img_dirs) -> BytesIO:
+def get_img(dir_name: str, img_name: str, local_img_dirs, drive_img_dirs) -> BytesIO:
     local_file_path = settings.IMG_DIR.joinpath(dir_name + "/" + img_name)
     # get img from local
     if local_img_dirs.get(dir_name) and img_name in local_img_dirs[dir_name]:
@@ -73,10 +73,6 @@ def get_img(dir_name: str, img_name: str, background_tasks: BackgroundTasks, loc
     else:
         img_id = drive_img_dirs.get(dir_name).get('files').get(img_name)
         img = BytesIO(get_file(img_id))
-        settings.IMG_DIR.joinpath(dir_name).mkdir(
-            parents=True, exist_ok=True)
-        if background_tasks:
-            background_tasks.add_task(save_img, img, local_file_path)
     return img
 
 

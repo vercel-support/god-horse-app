@@ -6,11 +6,13 @@ from fastapi.logger import logger
 
 from .image import local_img_dirs, drive_img_dirs
 from ..utils.ticket import update_sheet, get_tickets, generate_finish_cert, clear_sheet
-from ..utils.image import get_img, update_local_img_dirs, update_drive_img_dirs
+from ..utils.image import get_img, save_img, update_local_img_dirs, update_drive_img_dirs
 from ..utils.security import api_key_checker
+from ..config import get_settings
 
 logger.setLevel(logging.DEBUG)
 router = APIRouter()
+settings = get_settings()
 tickets = dict()
 user_email_dict = dict()
 
@@ -36,20 +38,22 @@ async def get_ticket(sheet_name: str, email: EmailStr, background_tasks: Backgro
     return {'words': words}
 
 
-@router.get('/refresh_tickets')
+@router.get('/refresh')
 async def refresh_tickets(sheet_name, background_tasks: BackgroundTasks = None):
     global tickets, user_email_dict, local_img_dirs, drive_img_dirs
     try:
         tickets.update(get_tickets(sheet_name=sheet_name))
-        await clear_sheet(sheet_name)
-        try:
-            get_img(sheet_name, 'template.png', background_tasks,
-                    local_img_dirs, drive_img_dirs)
-        except:
-            background_tasks.add_task(update_local_img_dirs, local_img_dirs)
-            background_tasks.add_task(update_drive_img_dirs, drive_img_dirs)
         user_email_dict = dict()
-
+        await clear_sheet(sheet_name)
+        update_drive_img_dirs(drive_img_dirs)
+        img = get_img(sheet_name, 'template.png',
+                      {}, drive_img_dirs)
+        settings.IMG_DIR.joinpath(sheet_name).mkdir(
+            parents=True, exist_ok=True)
+        local_file_path = settings.IMG_DIR.joinpath(
+            sheet_name + "/template.png")
+        update_local_img_dirs(local_img_dirs)
+        background_tasks.add_task(save_img, img, local_file_path)
         return {'status': f'refresh {sheet_name}'}
     except Exception as e:
         raise HTTPException(

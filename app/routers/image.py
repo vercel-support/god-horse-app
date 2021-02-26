@@ -43,15 +43,15 @@ cert_example = [{
 async def image_endpoint(dir_name: str, img_name: str, background_tasks: BackgroundTasks = None, merge_text_list: Optional[List[MergeText]] = Body(None, example=cert_example)):
     global local_img_dirs, drive_img_dirs
     try:
-        img = get_img(dir_name, img_name, background_tasks,
-                      local_img_dirs, drive_img_dirs)
+        img = get_img(dir_name, img_name, local_img_dirs, drive_img_dirs)
+        background_tasks.add_task(
+            save_img, img, settings.IMG_DIR.joinpath(f'{dir_name}/{img_name}'))
     except Exception as e:
         raise HTTPException(
             status_code=404, detail=str(e))
     finally:
-        if background_tasks:
-            background_tasks.add_task(update_local_img_dirs, local_img_dirs)
-            background_tasks.add_task(update_drive_img_dirs, drive_img_dirs)
+        background_tasks.add_task(update_local_img_dirs, local_img_dirs)
+        background_tasks.add_task(update_drive_img_dirs, drive_img_dirs)
 
     if merge_text_list:
         for merge_text in merge_text_list:
