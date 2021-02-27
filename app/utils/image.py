@@ -37,7 +37,6 @@ def get_dir_list(q_id='1TFlN9CB18Xv4g29swpjvhGKkBWAxFig6', dir_only=False):
 
 
 def update_drive_img_dirs(img_dirs: Dict):
-    print('go update')
     if img_dirs is None:
         logger.warning(f'img_dirs can not be None!!')
         return
@@ -49,10 +48,9 @@ def update_drive_img_dirs(img_dirs: Dict):
 
 
 def get_img_id(dir_name: str, img_name: str, drive_img_dirs: Dict):
-    if not drive_img_dirs.get(dir_name):
-        raise Exception(f'{dir_name} not in drive!!')
-    if not drive_img_dirs.get(dir_name).get('files').get(img_name):
-        raise Exception(f'{img_name} not in {dir_name}!!')
+    if not drive_img_dirs.get(dir_name) or not drive_img_dirs.get(dir_name).get('files').get(img_name):
+        logger.info('go updating drive_img_dirs!!')
+        update_drive_img_dirs(drive_img_dirs)
     return drive_img_dirs.get(dir_name).get('files').get(img_name)
 
 
