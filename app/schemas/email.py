@@ -22,4 +22,5 @@ class EmailSchema(BaseEmailSchema):
 
 class EmailAttachFileSchema(EmailSchema):
     file_type: Optional[str]
+    file_id: Optional[str]
     file_name: Optional[str]
