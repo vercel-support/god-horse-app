@@ -1,12 +1,12 @@
-import logging
 from typing import Optional
 from pydantic import EmailStr
-from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException, exceptions
+from fastapi import APIRouter, Depends, BackgroundTasks, HTTPException
 from fastapi.logger import logger
+import logging
 
-from .image import local_img_dirs, drive_img_dirs
+from .image import drive_img_dirs
 from ..utils.ticket import update_sheet, get_tickets, generate_finish_cert, clear_sheet
-from ..utils.image import get_img, save_img, update_local_img_dirs, update_drive_img_dirs
+from ..utils.image import update_drive_img_dirs
 from ..utils.security import api_key_checker
 from ..config import get_settings
 
@@ -19,7 +19,7 @@ user_email_dict = dict()
 
 @router.get('/get_ticket')
 async def get_ticket(sheet_name: str, email: EmailStr, background_tasks: BackgroundTasks, name: str):
-    global tickets, user_email_dict
+    global tickets, user_email_dict, drive_img_dirs
     if email in user_email_dict:
         number, title, words = user_email_dict[email]
         return {'words': words}
@@ -34,31 +34,21 @@ async def get_ticket(sheet_name: str, email: EmailStr, background_tasks: Backgro
     background_tasks.add_task(update_sheet, sheet_name,
                               ind=number, values=[name, email, '0'])
     background_tasks.add_task(
-        generate_finish_cert, dir_name=sheet_name, name=name, title=title, words=words)
+        generate_finish_cert, sheet_name, drive_img_dirs, title, words, name)
     return {'words': words}
 
 
-@router.get('/refresh')
-async def refresh_tickets(sheet_name, background_tasks: BackgroundTasks = None):
-    global tickets, user_email_dict, local_img_dirs, drive_img_dirs
-    try:
-        tickets.update(get_tickets(sheet_name=sheet_name))
-        user_email_dict = dict()
-        await clear_sheet(sheet_name)
-        update_drive_img_dirs(drive_img_dirs)
-        img = get_img(sheet_name, 'template.png',
-                      {}, drive_img_dirs)
-        settings.IMG_DIR.joinpath(sheet_name).mkdir(
-            parents=True, exist_ok=True)
-        local_file_path = settings.IMG_DIR.joinpath(
-            sheet_name + "/template.png")
-        update_local_img_dirs(local_img_dirs)
-        background_tasks.add_task(save_img, img, local_file_path)
-        return {'status': f'refresh {sheet_name}'}
-    except Exception as e:
-        raise HTTPException(
-            status_code=404, detail=f'Error: {str(e)}')
-
+@router.get('/update_tickets')
+def update_tickets(sheet_name: str, background_tasks: BackgroundTasks):
+    global tickets, user_email_dict
+    tickets[sheet_name] = list()
+    _tickets = get_tickets(sheet_name=sheet_name)
+    for number, title, words, name, email, is_sendt in _tickets:
+        if name and email:
+            user_email_dict[email] = (number, title, words)
+        else:
+            tickets[sheet_name].append(
+                (number, title, words, name, email, is_sendt))
 
 # @router.on_event('startup')
 # async def on_startup() -> None:
