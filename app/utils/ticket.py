@@ -1,19 +1,15 @@
-from logging import log
-import logging
 from cachetools.func import ttl_cache
 from functools import lru_cache
-from pathlib import Path
 from typing import List, Dict
-from io import BytesIO
 from fastapi.logger import logger
 import logging
-import json
 import string
 from random import shuffle
+
 import gspread
 from gspread.models import Cell
 
-from .image import image_merge_text, save_img
+from .image import image_merge_text, get_img, upload_img
 from ..config import get_settings
 
 settings = get_settings()
@@ -67,16 +63,14 @@ def get_cert_configs(sheet_name: str):
     return cert_conf_dict
 
 
-async def generate_finish_cert(dir_name: str, name: str, words: str, title: str):
+async def generate_finish_cert(dir_name: str, drive_img_dirs: Dict, title: str, words: str, name: str):
     text_conf_dict = get_cert_configs(settings.SHEET_CERT_CONF_NAME)
-    img = BytesIO(
-        open(settings.IMG_DIR.joinpath(f'{dir_name}/template.png').absolute(), 'rb').read())
+    img_id = drive_img_dirs.get(dir_name).get('files').get('template.png')
+    img = get_img(img_id)
+    img = image_merge_text(img, title, **text_conf_dict['title'])
     img = image_merge_text(img, words, **text_conf_dict['words'])
     img = image_merge_text(img, name, **text_conf_dict['name'])
-    img = image_merge_text(img, title, **text_conf_dict['title'])
-    file_path = settings.IMG_DIR.joinpath(
-        f'{dir_name}/{name}.png').absolute()
-    save_img(img, file_path)
+    upload_img(img, drive_img_dirs.get(dir_name).get('id'), f'{name}.png')
 
 
 async def clear_sheet(sheet_name: str, sheet_range: str = 'D2:F582'):
