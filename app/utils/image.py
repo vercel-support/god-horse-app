@@ -36,43 +36,28 @@ def get_dir_list(q_id='1TFlN9CB18Xv4g29swpjvhGKkBWAxFig6', dir_only=False):
     return {file['title']: file['id'] for file in file_list}
 
 
-def update_local_img_dirs(img_dirs: Dict = None):
-    if img_dirs == None:
-        raise Exception(f'img_dirs can not be None!!')
-    if not settings.IMG_DIR.exists():
-        settings.IMG_DIR.mkdir(parents=True, exist_ok=True)
-        return
-    for p in settings.IMG_DIR.iterdir():
-        if p.is_dir():
-            img_dirs.update(
-                {p.name: [f.name for f in p.iterdir() if f.name.endswith('.png')]})
-    # return img_dirs
-
-
 def update_drive_img_dirs(img_dirs: Dict):
-    if img_dirs == None:
-        raise Exception(f'img_dirs can not be None!!')
+    print('go update')
+    if img_dirs is None:
+        logger.warning(f'img_dirs can not be None!!')
+        return
     _img_dirs = get_dir_list(dir_only=True)
     for title, _id in _img_dirs.items():
         if title not in img_dirs and '.' not in title:
             img_dirs[title] = {'id': _id,
                                'files': get_dir_list(q_id=_id)}
-    # return img_dirs
 
 
-def get_img(dir_name: str, img_name: str, local_img_dirs, drive_img_dirs) -> BytesIO:
-    local_file_path = settings.IMG_DIR.joinpath(dir_name + "/" + img_name)
-    # get img from local
-    if local_img_dirs.get(dir_name) and img_name in local_img_dirs[dir_name]:
-        logger.info('read local file')
-        img = read_img(local_file_path)
-    elif not drive_img_dirs.get(dir_name):
-        raise Exception(f'{dir_name} not in "{settings.SHEET_FILE_NAME}"')
-    elif not drive_img_dirs.get(dir_name).get('files').get(img_name):
-        raise Exception(f'{img_name} not in {dir_name}')
-    else:
-        img_id = drive_img_dirs.get(dir_name).get('files').get(img_name)
-        img = BytesIO(get_file(img_id))
+def get_img_id(dir_name: str, img_name: str, drive_img_dirs: Dict):
+    if not drive_img_dirs.get(dir_name):
+        raise Exception(f'{dir_name} not in drive!!')
+    if not drive_img_dirs.get(dir_name).get('files').get(img_name):
+        raise Exception(f'{img_name} not in {dir_name}!!')
+    return drive_img_dirs.get(dir_name).get('files').get(img_name)
+
+
+def get_img(img_id) -> BytesIO:
+    img = BytesIO(get_file(img_id))
     return img
 
 
@@ -83,6 +68,14 @@ def get_file(_id: str, decoding=False):
     if decoding:
         return file.content.getvalue().decode('utf-8')
     return file.content.getvalue()
+
+
+def upload_img(img: BytesIO, dir_id: str, img_name: str):
+    file = drive.CreateFile({'parents': [{'id': dir_id}]})
+    file.content = img
+    file['title'] = img_name
+    file['mimeType'] = 'image/png'
+    file.Upload()
 
 
 def image_merge_text(
@@ -142,20 +135,3 @@ def iter_text(text, n_w):
                 yield line[i*n_w:n_w*(1+i)]
         else:
             yield line
-
-
-def read_img(file_path: Union[Path, str]):
-    with open(file_path, 'rb') as f:
-        return BytesIO(f.read())
-
-
-def save_img(file: Union[BytesIO, StringIO], file_name: Union[Path, str]):
-    if isinstance(file, BytesIO):
-        w_format = 'wb'
-    elif isinstance(file, StringIO):
-        w_format = 'w'
-    else:
-        raise Exception(f'The file format not BytesIO or StringIO!!')
-    file_name.parent.mkdir(parents=True, exist_ok=True)
-    with open(file_name, w_format) as f:
-        f.write(file.getvalue())
