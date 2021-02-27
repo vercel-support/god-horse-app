@@ -8,6 +8,7 @@ from fastapi.logger import logger
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail, Attachment, FileName, FileType, FileContent, Disposition
 
+from ..utils.image import get_img
 from ..schemas.email import EmailSchema, EmailAttachFileSchema
 from ..config import get_settings
 
@@ -44,6 +45,7 @@ def generate_email(
     subject: str,
     html_content: str = None,
     plain_text_content: str = None,
+    file_id: str = None,
     file_name: str = None,
     file_type: str = None,
 ):
@@ -54,12 +56,9 @@ def generate_email(
         html_content=html_content,
         plain_text_content=plain_text_content,
     )
-    if file_name.exists():
-        data = open(file_name, 'rb').read()
-        message.attachment = generate_attachFile(
-            data, file_name.name, file_type)
-    else:
-        logger.warning(f'{file_name} does not exist!!')
+    data = get_img(file_id)
+    message.attachment = generate_attachFile(
+        data, file_name, file_type)
     return message
 
 
