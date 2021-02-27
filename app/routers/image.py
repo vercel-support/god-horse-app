@@ -1,12 +1,12 @@
 from io import BytesIO
 import logging
 import shutil
-from typing import Optional, List
+from typing import Optional, List, final
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Body
 from fastapi.logger import logger
 from starlette.responses import StreamingResponse
 
-from ..utils.image import update_drive_img_dirs, update_local_img_dirs, get_file, image_merge_text, read_img, save_img, get_img
+from ..utils.image import get_img_id, update_drive_img_dirs, image_merge_text, get_img
 # from ..utils.security import api_key_checker
 from ..schemas.image import MergeText
 from ..config import get_settings
@@ -14,7 +14,6 @@ from ..config import get_settings
 router = APIRouter()
 logger.setLevel(logging.DEBUG)
 settings = get_settings()
-local_img_dirs = dict()
 drive_img_dirs = dict()
 
 cert_example = [{
@@ -40,18 +39,15 @@ cert_example = [{
 
 
 @router.post("/img/{dir_name}/{img_name}")
-async def image_endpoint(dir_name: str, img_name: str, background_tasks: BackgroundTasks = None, merge_text_list: Optional[List[MergeText]] = Body(None, example=cert_example)):
-    global local_img_dirs, drive_img_dirs
+async def image_endpoint(dir_name: str, img_name: str, background_tasks: BackgroundTasks, merge_text_list: Optional[List[MergeText]] = Body(None, example=cert_example)):
+    global drive_img_dirs
     try:
-        img = get_img(dir_name, img_name, local_img_dirs, drive_img_dirs)
-        background_tasks.add_task(
-            save_img, img, settings.IMG_DIR.joinpath(f'{dir_name}/{img_name}'))
+        img_id = get_img_id(dir_name, img_name, drive_img_dirs)
+        img = get_img(img_id)
     except Exception as e:
-        raise HTTPException(
-            status_code=404, detail=str(e))
-    finally:
-        background_tasks.add_task(update_local_img_dirs, local_img_dirs)
         background_tasks.add_task(update_drive_img_dirs, drive_img_dirs)
+        raise HTTPException(
+            status_code=404, detail=str(e)+' Please try again later.')
 
     if merge_text_list:
         for merge_text in merge_text_list:
@@ -60,23 +56,14 @@ async def image_endpoint(dir_name: str, img_name: str, background_tasks: Backgro
     return StreamingResponse(img, media_type="image/png")
 
 
-@router.get('/clear_img_dir')
-async def clear_img_dri(dir_name: str):
-    global local_img_dirs
-    local_img_dirs = dict()
-    # shutil.rmtree(settings.IMG_DIR.joinpath(dir_name).absolute())
-    if not settings.IMG_DIR.exists():
-        return {'info': f'the directory ({dir_name}) does not exist!'}
-    [file.unlink() for file in settings.IMG_DIR.joinpath(
-        dir_name).iterdir() if not file.name.startswith('template')]
-
-    return {'info': f'remove the images in directory ({dir_name})'}
+@router.get('/update_drive_dir')
+async def update_drive_dir(dir_name: str):
+    update_drive_img_dirs(drive_img_dirs)
+    return {'info': f'Update the id in directory ({dir_name})'}
 
 
 # @router.on_event('startup')
 # async def on_startup() -> None:
-#     global local_img_dirs, drive_img_dirs
-#     update_local_img_dirs(local_img_dirs)
 #     update_drive_img_dirs(drive_img_dirs)
 
 
